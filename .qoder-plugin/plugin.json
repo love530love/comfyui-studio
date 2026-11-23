@@ -1,0 +1,16 @@
+{
+  "name": "comfyui-studio",
+  "displayName": "ComfyUI Studio",
+  "version": "0.1.0",
+  "description": "本地 ComfyUI 生图、生视频与漫剧制作流水线",
+  "author": {
+    "name": "love530love"
+  },
+  "keywords": [
+    "qoder-plugin",
+    "comfyui",
+    "image-generation",
+    "video-generation",
+    "short-drama"
+  ]
+}
