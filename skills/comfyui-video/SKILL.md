@@ -1,6 +1,6 @@
 ---
 name: comfyui-video
-description: 用本地 ComfyUI 通过 MCP 生成视频：Wan2.1 文生视频、图生视频与动作迁移。当用户要求"用 ComfyUI 生成视频""让这张图动起来""做一段镜头"或排查视频任务超时时使用。
+description: 用本地 ComfyUI 通过 MCP 生成视频：Wan2.1 文生视频、图生视频与动作迁移，以及 MiniMax H3 音视频单镜（已验证）。当用户要求"用 ComfyUI 生成视频""让这张图动起来""做一段带声音的镜头"或排查视频任务超时时使用。
 ---
 
 # ComfyUI 视频生成
@@ -33,6 +33,16 @@ Wan2.1 t2v 的完整可复用 JSON、参数含义与踩坑见 `references/wan-vi
 ## 时长与帧数
 
 Wan 系列要求帧数满足 `4n+1`（17、33、49、81…）。20fps 下 81 帧约 4 秒。写分镜时先定时长再换算帧数，不要提交任意帧数后期待模型自动补齐。
+
+## MiniMax H3 音视频单镜（2026-11-23 实测通过）
+
+H3 一次生成视频+立体声，单次 5–15 秒、24fps，竖屏 768×1344 与 4 步 turbo LoRA 搭配。用于重点镜头和抽卡支线；常规叙事仍走 Wan。
+
+- 模型（用 `list_models` 核实实际文件名；工作流里出现的不同名字可能是同一文件的符号链接别名）：`minimax_h3_fl2va_pruned_int8_convrot.safetensors`（DiT ~19.5GB）、`qwen3vl_32b_minimax_h3_int8_convrot.safetensors`（TE ~25.3GB）、`minimax_h3_video_vae_fp16.safetensors`、`minimax_h3_audio_vae_fp32.safetensors`、`minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors`。
+- 节点链：`LoadImage` → `MiniMaxH3ImageToVideo`（768×1344，length=124）→ `RandomNoise` + `KSamplerSelect(res_multistep)` + `BasicScheduler(simple, steps=4)` + `BasicGuider` → `SamplerCustomAdvanced` → `VAEDecode` + `VAEDecodeAudio` → `VHS_VideoCombine(audio=…, frame_rate=24, video/h264-mp4)`。漏接 `VAEDecodeAudio` 就没有音轨；输出名形如 `*_00001-audio.mp4`。
+- 实测（3090 24GB，六启动参数）：`Prompt executed 14:12` 出 124 帧/5.17s；其中文本编码 ~7 分钟、DiT 首次 staging 264s、4 步采样 ~171s（稳态 ~40s/步），其余为双 VAE 解码+封装。峰值显存 22.86/24.58GB——跑前关掉其它占卡程序，按 15 分钟量级等待，期间日志可能长时间无更新但 GPU 仍满载。
+- 帧数与 latent：length=124 → latent_t 37 / audio_t 207；turbo LoRA 是 768p 档，与 768×1344 匹配。H3 单次上限约 15s（~360 帧），"75 秒成片"靠分段生成 + 首尾帧衔接。
+- 已知坑：`comfyui_smznodes` 在 import 时全局补丁 `comfy.sample.prepare_noise`，对嵌套音视频 latent 只按视频流造噪声，H3 日志报 `size of tensor a (149184) must match the size of tensor b (3593664)`。修复：`custom_nodes/comfyui_smznodes/modules/rng.py` 的 `prepare_noise` 顶部加 `is_nested` 分支委托原生 `store.prepare_noise`；插件重装会覆盖，升级后复查。
 
 ## 失败处理
 
