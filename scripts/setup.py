@@ -141,6 +141,8 @@ def build_config(args: argparse.Namespace) -> dict:
         "comfyui_host": args.host,
         "comfyui_port": args.port,
         "comfyui_start_args": args.start_args,
+        "comfyui_vsdev": not args.no_vsdev,
+        "comfyui_admin": args.admin,
         "pycharm_exe": pycharm,
         "pycharm_project": str(project),
         "pycharm_port": args.pycharm_port,
@@ -166,8 +168,10 @@ def main() -> int:
     parser.add_argument("--python", help="ComfyUI interpreter (default: <dir>/.venv/...)")
     parser.add_argument("--runner-server", default=os.environ.get("COMFYUI_RUNNER_SERVER"), help="comfyui-runner server.py")
     parser.add_argument("--host", default="127.0.0.1")
-    parser.add_argument("--port", type=int, default=8189)
+    parser.add_argument("--port", type=int, default=8188)
     parser.add_argument("--start-args", default="", help="extra ComfyUI start arguments")
+    parser.add_argument("--no-vsdev", action="store_true", help="do not initialize the VS 2022 x64 developer environment")
+    parser.add_argument("--admin", action="store_true", help="start ComfyUI elevated (asks for UAC approval)")
     parser.add_argument("--pycharm-exe", help="PyCharm executable; auto-detected when omitted")
     parser.add_argument("--pycharm-project", help="project path passed to PyCharm MCP (default: comfyui dir)")
     parser.add_argument("--pycharm-port", type=int, default=64462)

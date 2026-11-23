@@ -81,9 +81,9 @@ class LauncherTests(unittest.TestCase):
         for path in (ROOT / "bin").glob("*.py"):
             compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
-    def test_setup_compiles(self):
-        path = ROOT / "scripts" / "setup.py"
-        compile(path.read_text(encoding="utf-8"), str(path), "exec")
+    def test_scripts_compile(self):
+        for path in (ROOT / "scripts").glob("*.py"):
+            compile(path.read_text(encoding="utf-8"), str(path), "exec")
 
 
 if __name__ == "__main__":

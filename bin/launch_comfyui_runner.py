@@ -69,6 +69,12 @@ def main() -> int:
         env["COMFYUI_PORT"] = str(cfg["comfyui_port"])
     if cfg.get("comfyui_start_args"):
         env["COMFYUI_START_ARGS"] = str(cfg["comfyui_start_args"])
+    for key, env_name in (
+        ("comfyui_vsdev", "COMFYUI_VSDEV"),
+        ("comfyui_admin", "COMFYUI_ADMIN"),
+    ):
+        if key in cfg:
+            env[env_name] = "1" if cfg[key] else "0"
 
     command = [str(python), str(server)]
     proc = subprocess.Popen(command, cwd=str(root), env=env)

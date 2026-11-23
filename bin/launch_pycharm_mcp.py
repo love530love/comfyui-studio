@@ -1,11 +1,34 @@
 #!/usr/bin/env python3
-"""Launch PyCharm's built-in stdio MCP server using the local studio config."""
+"""Bridge stdio MCP to PyCharm's built-in SSE MCP server.
+
+PyCharm's launcher can carry a RUNASADMIN compatibility flag, so spawning
+`pycharm64.exe stdioMcpServer` from a normal process fails with WinError 740.
+The IDE's built-in web server exposes the same MCP tools over SSE, which works
+without elevation.
+"""
 
 import json
 import os
-import subprocess
 import sys
 from pathlib import Path
+
+import anyio
+import mcp.types as types
+from mcp import ClientSession
+from mcp.client.sse import sse_client
+from mcp.server.lowlevel import Server
+from mcp.server.stdio import stdio_server
+
+PROXY_ENV = (
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "ALL_PROXY",
+    "NO_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "all_proxy",
+    "no_proxy",
+)
 
 
 def config_path() -> Path:
@@ -28,27 +51,50 @@ def load_config() -> dict:
         fail(f"cannot read config {path}: {exc}")
 
 
+def root_error(exc: BaseException) -> BaseException:
+    while isinstance(exc, BaseExceptionGroup) and exc.exceptions:
+        exc = exc.exceptions[0]
+    return exc
+
+
+async def run_bridge(port: int) -> None:
+    url = f"http://127.0.0.1:{port}/sse"
+    # httpx fails to parse bracketed IPv6 entries such as "[::1]" in NO_PROXY
+    for key in PROXY_ENV:
+        os.environ.pop(key, None)
+
+    async with sse_client(url) as (read, write):
+        async with ClientSession(read, write) as remote:
+            await remote.initialize()
+            listing = await remote.list_tools()
+
+            server = Server("pycharm-mcp-bridge", version="0.2.0")
+
+            @server.list_tools()
+            async def list_tools() -> list[types.Tool]:
+                return listing.tools
+
+            @server.call_tool()
+            async def call_tool(name: str, arguments: dict | None) -> types.CallToolResult:
+                return await remote.call_tool(name, arguments or {}, read_timeout_seconds=None)
+
+            async with stdio_server() as (stdin, stdout):
+                await server.run(stdin, stdout, server.create_initialization_options())
+
+
 def main() -> int:
     cfg = load_config()
-    exe_raw = os.environ.get("PYCHARM_EXE") or cfg.get("pycharm_exe")
-    if not exe_raw:
-        fail("pycharm_exe is not configured. Run scripts/setup.py --pycharm-exe <path>.")
-    exe = Path(exe_raw).expanduser()
-    if not exe.is_file():
-        fail(f"PyCharm executable not found: {exe}")
-
-    project_raw = cfg.get("pycharm_project") or cfg.get("comfyui_dir")
-    if not project_raw:
-        fail("pycharm_project is not configured.")
-    project = Path(project_raw).expanduser()
-
-    env = os.environ.copy()
-    env["IJ_MCP_SERVER_PROJECT_PATH"] = str(project)
-    env["IJ_MCP_SERVER_PORT"] = str(cfg.get("pycharm_port") or 64462)
-    env["PYTHONUTF8"] = "1"
-
-    proc = subprocess.Popen([str(exe), "stdioMcpServer"], cwd=str(project) if project.is_dir() else None, env=env)
-    return proc.wait()
+    port = int(cfg.get("pycharm_port") or 64462)
+    try:
+        anyio.run(run_bridge, port)
+    except BaseException as exc:
+        cause = root_error(exc)
+        fail(
+            f"cannot reach the PyCharm MCP server on 127.0.0.1:{port} ({cause}). "
+            "Start PyCharm with the project open and check pycharm_port in "
+            f"{config_path()}."
+        )
+    return 0
 
 
 if __name__ == "__main__":
