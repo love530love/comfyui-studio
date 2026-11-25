@@ -66,10 +66,16 @@
 
 - 现象：头盔白兔贴纸时有时无、持头盔的左右手互换、两颊多出伤、雨衣 037 丢失。
 - 机制：每镜独立起关键帧；提示词只锁脸，没锁标志物、持物手和伤势数量，Qwen 会把参考图的疤痕扩散到两颊。
-- 修法：每条 prompt 与 negative 同时锁 `white rabbit sticker on the right side facing camera`、`left hand holding helmet / right hand empty`、`only one old scar on the right eyebrow, no other facial injuries`、`037 clearly printed and clean`；H3 prompt 再写一遍。关键帧验收先看贴纸、持物手、单疤、037 四项，再看构图。
+- 修法：先修参考图——参考图本身多疤或重复 037 时，所有派生画面都会漂移，必须先做单疤、单 037 的干净参考。贴纸位置写死为“只贴后壳”：正面镜头写 `front of the helmet completely blank, no sticker`，背面/3-4 背视角写 `back shell facing camera, white rabbit sticker on the back shell`；正面 prompt 绝不能出现“贴纸可见”。再锁 `left hand holding helmet / right hand empty`、`exactly one old healed scar on the right eyebrow to right cheekbone, both cheeks otherwise clear, no other injuries, no blood`、`037 clearly printed and clean on the back only`；H3 prompt 再写一遍。关键帧验收先看贴纸位置、持物手、单疤、037 四项，再看构图。近景擦除贴纸会改构图或加对侧疤，失败时改用自然单疤版本，不要人造疤。
 
 ## F12 真实品牌泄漏
 
 - 现象：AI 在冰箱、货架、外卖包装上生成可乐/芬达/酸奶等真实品牌。
 - 机制：模型先验倾向于可识别包装；只写 “no brand logos” 往往不够。
 - 修法：生成前 negative 写明 `soda bottles, water bottles, beer bottles, jars, cans, yogurt cups, printed label text`，并指定“每杯都是同款空白标签”；生成后目检，出现品牌即重渲染。不要用后期打码掩盖，打码会破坏真实感并留下明显补丁。
+
+## F13 生成模型烘焙 UI/文字
+
+- 现象：直播界面、状态栏、弹幕条被直接画进关键帧或视频，中文字形错乱（如 “Onlte 115181”），后期无法直接使用。
+- 机制：提示词描述了“透过直播屏幕看”等场景，模型把“直播 UI”当成画面内容；文字是生成模型的弱项。
+- 修法：关键帧 prompt 明确 `No text, numbers or interface is drawn in the frame; the UI is added in editing`，negative 加 `text, numbers, interface, status bar, speech bubble, icons`。已烘入的 UI 用图像编辑去掉，再单独画透明 PNG 层（`{shot_id}_uionly.png`），剪辑时 ffmpeg `overlay` 合成；这样中文锐利、可改文案，也不随视频抖动变形。
