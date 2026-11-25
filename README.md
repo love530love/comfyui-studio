@@ -12,7 +12,7 @@
 | MCP `comfyui-studio-pycharm` | 把 stdio MCP 转发到 PyCharm 内置 Web 服务的 SSE 接口，用 IDE 终端与项目绑定运行 ComfyUI |
 | 技能 `comfyui-image` | Z-Image Turbo 文生图、角色一致性、关键帧批量生成 |
 | 技能 `comfyui-video` | Wan2.1 文生视频、图生视频、动作迁移，非阻塞任务与 `gifs` 输出处理 |
-| 技能 `short-drama-pipeline` | 漫剧文件契约、多 agent 阶段分工、分镜 schema、发布登记与合规 |
+| 技能 `short-drama-pipeline` | 漫剧文件契约、多 agent 阶段分工、分镜 schema、时长闭合与单镜单节拍机检、连续性台账、失败模式库、发布登记与合规 |
 
 ## 前置条件
 
