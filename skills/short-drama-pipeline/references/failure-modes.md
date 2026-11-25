@@ -79,3 +79,33 @@
 - 现象：直播界面、状态栏、弹幕条被直接画进关键帧或视频，中文字形错乱（如 “Onlte 115181”），后期无法直接使用。
 - 机制：提示词描述了“透过直播屏幕看”等场景，模型把“直播 UI”当成画面内容；文字是生成模型的弱项。
 - 修法：关键帧 prompt 明确 `No text, numbers or interface is drawn in the frame; the UI is added in editing`，negative 加 `text, numbers, interface, status bar, speech bubble, icons`。已烘入的 UI 用图像编辑去掉，再单独画透明 PNG 层（`{shot_id}_uionly.png`），剪辑时 ffmpeg `overlay` 合成；这样中文锐利、可改文案，也不随视频抖动变形。
+
+## F14 等待器超时但任务仍在跑
+
+- 现象：批处理报 `TimeoutError: ... not finished in 1800s`，但 ComfyUI 队列继续执行，稍后产物出现在 `output/`。
+- 机制：等待器从“提交”开始计时，包含前面排队的时间；长任务或队列靠前插队时会先超时。ComfyUI 新提交可跳到已有 pending 之前，编辑任务会被 H3 大任务压住。
+- 修法：超时只说明等待结束，不代表任务失败。先用 `/queue` 和 `/history/{prompt_id}` 核实，再检查 `output/{project}/` 是否已有新文件；有则手动拷贝并抽帧验收。重渲与轻量编辑分开排队：先清空编辑队列，再提交 H3，避免 H3 插队把编辑挤后。
+
+## F15 TTS 清单文本过期
+
+- 现象：字幕已改成新台词，成片里却听见旧音（本轮 s021 实际播放“第37杯，该你喝了。”）。
+- 机制：TTS 清单按 id 缓存文本与秒数；改字幕时只改了时间线，没有重跑该行 TTS，manifest 仍保留旧文本。
+- 修法：改任何台词后，逐行比对 `tts_manifest.json` 的 `text` 与时间线字幕，不一致的行必须用 `--only <id>` 重配；混音前用 ASR 抽验成片对白段，发现同音之外的整句不符即回查清单。
+
+## F16 CPU TTS 内存不足段错误
+
+- 现象：`generate_tts.py` 在 `loading IndexTTS2` 后直接 Segmentation fault（exit 139），无 Python 异常。
+- 机制：ComfyUI 空闲时仍缓存模型，系统可用内存可能只剩 5–6GB；IndexTTS2 加载峰值超过剩余内存。
+- 修法：先 `POST /free {"unload_models":true,"free_memory":true}` 释放 ComfyUI 缓存，确认可用内存 >20GB 再跑；同一失败不要连续盲重试。
+
+## F17 剪辑脚本相对路径导致 concat 双拼
+
+- 现象：ffmpeg 报找不到 `06_edit/ep01_cut_v3/06_edit/ep01_cut_v3/clip_...mp4`。
+- 机制：`build_cut.py --work` 接受相对路径，写进 concat.txt 的条目相对 concat.txt 所在目录，被解析成重复层级。
+- 修法：`--work` 一律传绝对路径（`D:/...`）；`--output` 仍可是导出目录内的文件名。
+
+## F18 字幕安全区与播报重叠
+
+- 现象：竖屏底部字幕被抖音 UI 遮挡；长系统播报压到下一句台词（本轮 s022 4.95s 压到 s023 0.68s）。
+- 机制：ASS `MarginV` 过小；TTS 按原句字数生成，atempo 上限 1.30 后仍超出字幕窗。
+- 修法：竖屏 `MarginV` 用到 250（768×1344 基准）；系统播报优先改写短句（“第38单，送到您家门口。”2.77s），不要靠极限变速硬塞；混音前核对 `语音起点 + 适配后时长 ≤ 下一句起点`。
