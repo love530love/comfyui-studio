@@ -102,7 +102,7 @@
 
 - 现象：ffmpeg 报找不到 `06_edit/ep01_cut_v3/06_edit/ep01_cut_v3/clip_...mp4`。
 - 机制：`build_cut.py --work` 接受相对路径，写进 concat.txt 的条目相对 concat.txt 所在目录，被解析成重复层级。
-- 修法：`--work` 一律传绝对路径（`D:/...`）；`--output` 仍可是导出目录内的文件名。
+- 修法：`--work` 一律传项目内的绝对路径；`--output` 仍可是导出目录内的文件名。
 
 ## F18 字幕安全区与播报重叠
 
