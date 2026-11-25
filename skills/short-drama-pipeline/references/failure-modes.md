@@ -49,3 +49,27 @@
 - 现象：字幕、TTS 文本、分镜表里的台词各不相同。
 - 机制：同一句台词存在三份副本，改动只同步了一处。
 - 修法：以分镜表 `dialogue` 为唯一来源，TTS 与字幕都从它生成。
+
+## F09 运动拖沓与起剪窗口错误
+
+- 现象：每个 H3 镜头开头都在“准备动作”，人物迟迟不动，成片像慢放。
+- 机制：所有镜头一律从源视频 0.0 秒起剪，剪进了模型建立镜头的低动态段；低动态提示词又让输出接近冻结。`ffmpeg -t` 还会在目标边界少 1 帧。
+- 修法：逐镜算 96×168 灰度帧差，选平均动态最高的窗口；用 `setpts=PTS/speed` + `atempo=speed` 提速而不改目标时长，倍率写入 `refit_manifest.json`；低动态且非叙事爆点的镜头改静帧 + 推拉。输出用 `tpad=stop_mode=clone` + `-frames:v round(duration*24)` 精确闭合，不依赖 `-t` 截帧。
+
+## F10 道具尺度与品类漂移
+
+- 现象：500ml 奶茶被生成成巨型汽水杯、酸奶杯或带真实品牌的饮料；冰箱里混进瓶子、罐子、酱料。
+- 机制：提示词只写 “clear cup”，没有给容量、封膜、吸管、标签比例和“只手大小”的参照；场景里的既有包装会被模型当成主体。
+- 修法：写死 “normal 500ml sealed takeaway cup, flat dome lid, straw, small blank paper label about one third of cup height, roughly hand size”；negative 加 `oversized cup, soda cup, fast food cup, bottle, can, jar, yogurt cup, brand logos`。冰箱/货架镜头明确“只放同款杯”，生成后目检瓶罐与品牌，发现即重渲染。
+
+## F11 角色标记与伤势漂移
+
+- 现象：头盔白兔贴纸时有时无、持头盔的左右手互换、两颊多出伤、雨衣 037 丢失。
+- 机制：每镜独立起关键帧；提示词只锁脸，没锁标志物、持物手和伤势数量，Qwen 会把参考图的疤痕扩散到两颊。
+- 修法：每条 prompt 与 negative 同时锁 `white rabbit sticker on the right side facing camera`、`left hand holding helmet / right hand empty`、`only one old scar on the right eyebrow, no other facial injuries`、`037 clearly printed and clean`；H3 prompt 再写一遍。关键帧验收先看贴纸、持物手、单疤、037 四项，再看构图。
+
+## F12 真实品牌泄漏
+
+- 现象：AI 在冰箱、货架、外卖包装上生成可乐/芬达/酸奶等真实品牌。
+- 机制：模型先验倾向于可识别包装；只写 “no brand logos” 往往不够。
+- 修法：生成前 negative 写明 `soda bottles, water bottles, beer bottles, jars, cans, yogurt cups, printed label text`，并指定“每杯都是同款空白标签”；生成后目检，出现品牌即重渲染。不要用后期打码掩盖，打码会破坏真实感并留下明显补丁。
