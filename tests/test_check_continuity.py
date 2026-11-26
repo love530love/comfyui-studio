@@ -25,7 +25,10 @@ CONTRACTS = {
             "states": {"helmet": ["worn", "off"], "held_right": ["none", "bag"]},
         }
     },
-    "props": {"bag": {"anchor": "ice bag", "forbidden": ["cooler"]}},
+    "props": {
+        "bag": {"anchor": "ice bag", "forbidden": ["cooler"]},
+        "cup": {"anchor": "clear cup", "forbidden": ["soda can"]},
+    },
 }
 
 
@@ -174,6 +177,33 @@ class CheckerTests(unittest.TestCase):
         ]
         result = self.run_checker(shotlist(shots), "--strict")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_modal_can_is_not_forbidden(self):
+        shots = [
+            shot(
+                "ep02_s001",
+                2.0,
+                prompt="hero anchor; he can see the clear cup",
+                props={"cup": "present"},
+                transition={"type": "open"},
+            ),
+        ]
+        result = self.run_checker(shotlist(shots), "--strict")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_soda_can_fails(self):
+        shots = [
+            shot(
+                "ep02_s001",
+                2.0,
+                prompt="hero anchor; clear cup next to a soda can",
+                props={"cup": "present"},
+                transition={"type": "open"},
+            ),
+        ]
+        result = self.run_checker(shotlist(shots), "--strict")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("soda can", result.stdout)
 
     def test_duration_mismatch_fails(self):
         shots = [shot("ep02_s001", 2.0, transition={"type": "open"})]

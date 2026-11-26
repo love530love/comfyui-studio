@@ -29,17 +29,16 @@ NEGATION = re.compile(r"\b(?:no|without|never|not)\s+(?:(?:a|an|the|any)\s+)?$")
 
 
 def contains_positive(haystack: str, needle: str) -> bool:
-    """正向包含：'no visor' 不算出现禁用词 'visor'。"""
+    """正向包含：'no visor' 不算禁用词，'can see' 不算禁用词 'can'。"""
     text = norm(haystack)
     term = norm(needle)
-    start = 0
-    while True:
-        index = text.find(term, start)
-        if index == -1:
-            return False
-        if not NEGATION.search(text[max(0, index - 16):index]):
+    if not term:
+        return False
+    pattern = re.compile(rf"(?<![A-Za-z0-9]){re.escape(term)}(?![A-Za-z0-9])")
+    for match in pattern.finditer(text):
+        if not NEGATION.search(text[max(0, match.start() - 16):match.start()]):
             return True
-        start = index + len(term)
+    return False
 
 
 def as_list(value) -> list:
@@ -149,8 +148,8 @@ class Checker:
 
             if prev_shot is not None:
                 self.check_transition(prev_shot, shot, state, prev_state, axis, prev_axis, transition)
-            elif ttype and ttype != "open":
-                self.report.warn(self.where(shot_id, scene_no), f"场首镜头 transition.type={ttype}，应为 open")
+            elif ttype and ttype not in {"open", "time_jump"}:
+                self.report.warn(self.where(shot_id, scene_no), f"场首镜头 transition.type={ttype}，应为 open 或 time_jump")
 
             prev_shot, prev_state, prev_axis = shot, state, axis
 
