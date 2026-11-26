@@ -12,7 +12,25 @@
 | MCP `comfyui-studio-pycharm` | 把 stdio MCP 转发到 PyCharm 内置 Web 服务的 SSE 接口，用 IDE 终端与项目绑定运行 ComfyUI |
 | 技能 `comfyui-image` | Z-Image Turbo 文生图、角色一致性、关键帧批量生成 |
 | 技能 `comfyui-video` | Wan2.1 文生视频、图生视频、动作迁移，非阻塞任务与 `gifs` 输出处理 |
-| 技能 `short-drama-pipeline` | 漫剧文件契约、多 agent 阶段分工、分镜 schema、时长闭合与单镜单节拍机检、连续性台账、失败模式库、发布登记与合规 |
+| 技能 `short-drama-pipeline` | 漫剧文件契约、导演组帽子与 RACI、集/场/节拍/镜/生成单元/任务卡六级分解、分镜 schema、连续性状态机与机检、时长闭合、失败模式库、发布登记与合规 |
+
+## 导演组与连续性（0.4.0）
+
+`short-drama-pipeline` 把单集制作拆成导演组帽子：总导演、编剧、分镜、美术/资产、视效技术、剪辑、声音、场记/连续性、合规、商务、QA、制片。帽子映射到协作区既有角色，同一交付物不能自写自验；场记帽在 G2–G4 对状态契约有单项否决权。
+
+- `references/director-team.md`：帽子职责、L0–L6 分解、G0–G6 RACI、D-2→D+1 节奏、交接纪律。
+- `references/continuity-control.md`：唯一事实源、逐镜状态、换装/道具/轴线/方向/尾帧接力规则、AI 失败模式。
+- `references/shotlist-schema.md`：v2 分镜字段与 `contracts.yaml` 契约示例。
+- `scripts/check_continuity.py`：机检状态合法性、转场合法性、越轴、锚点/负面词/道具词逐字一致、时长闭合，并可出关键帧接触表与视频首尾帧边界表。
+
+```bash
+<comfyui>/.venv/Scripts/python.exe <comfyui-studio>/skills/short-drama-pipeline/scripts/check_continuity.py \
+  --project <project_root> --episode 2 --strict \
+  --sheet <project_root>/09_logs/contact/ep02_keyframes.png \
+  --video-sheet <project_root>/09_logs/contact/ep02_boundaries.png
+```
+
+`--strict` 用于 ep02 起的正式集；退出码 0 为通过，1 为契约错误，2 为配置/文件错误。单元测试在 `tests/test_check_continuity.py`。
 
 ## 前置条件
 

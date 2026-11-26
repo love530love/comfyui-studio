@@ -6,6 +6,7 @@
 episode: 1
 title: "第1集 借命"
 duration_target: 75          # 秒
+video_target: {min: 3, max: 5}   # 可选；H3 全镜模式可设 12–16，G2 冻结
 logline: "她替死人签字，签完发现自己也在名单上"
 scenes:
   - scene: 1
@@ -55,11 +56,97 @@ scenes:
 
 1. 所有 `id` 唯一且与上一集不冲突。
 2. `sum(duration)` 精确等于 `duration_target`，不留容差。
-3. `video: true` 的镜头数在 3–5 之间（成本约束）。
+3. `video: true` 的镜头数在 `video_target` 范围内（默认 3–5；H3 全镜模式可设 12–16）。
 4. 每个 `characters` 条目在 `02_characters/` 有对应文件。
 5. `keyframe` 路径的文件存在才能把 `status` 推进到 `keyframe_ok`。
 6. 每镜 `beat` 非空且只有一条；有 `dialogue` 时，镜头时长 ≥ 字数/4.5 + 0.2 秒。
 7. `chain_from` 只能引用同场景的上一个镜头；被引用镜头存在时其 `last_frame` 才能用于本镜首帧。
+8. ep02 起：每个角色/道具的 `state` 值必须在 `contracts.yaml` 的合法取值内。
+9. ep02 起：`cut`/`chain`/`insert` 只允许状态不变；状态变化必须用 `state_change` 或 `time_jump`，并写 `motivated_by`。
+10. ep02 起：同场 `axis_side` 翻转必须配中性镜或 `motivated_by`；`chain` 必须同侧。
+11. ep02 起：`characters` 里的角色锚点必须逐字出现在 `prompt`；负面必填词必须出现在 `negative`。
+12. `props` 为 `present` 的道具锚点必须出现在 `prompt`，且负面词不得出现在 `prompt`。
+
+一键机检（读 `contracts.yaml`，可选出接触表）：
+
+```bash
+<comfyui>/.venv/Scripts/python.exe <comfyui-studio>/skills/short-drama-pipeline/scripts/check_continuity.py \
+  --project <project_root> --episode 2 --strict \
+  --sheet <project_root>/09_logs/contact/ep02_keyframes.png \
+  --video-sheet <project_root>/09_logs/contact/ep02_boundaries.png
+```
+
+退出码 1 表示有 error，不得进入下一阶段；warning 必须逐条处置并记录。
+
+## v2 连续性扩展（ep02 起必填）
+
+ep01 为兼容基线，可缺以下字段；ep02 起新镜头必须写全，`scripts/check_continuity.py` 会强制执行。
+
+### 场景级
+
+```yaml
+scenes:
+  - scene: 1
+    location: "陈默家 楼道 / 夜"
+    location_ref: 01_series/assets/scenes/loc_hallway.png   # 场景参考图
+    time: "夜"
+    weather: "雨后"
+    axis: "楼道纵深：家门口在画左，窗在画右；机位不越过门框中线"
+    state_defaults:                 # 本场默认状态，可被单镜覆盖
+      chenmo:
+        wardrobe: raincoat_037
+        helmet: off_right_hand
+        injury: old_scar_only
+        wetness: soaked
+        held_left: phone
+        held_right: helmet
+```
+
+### 镜头级
+
+```yaml
+      - id: ep02_s001
+        axis_side: A                # A/B；同场不越轴
+        state:                      # 只写相对 state_defaults 的变化
+          chenmo:
+            held_right: none
+        props:
+          cup: absent               # present/absent；present 必须有道具锚点
+        transition:
+          type: open                # open/chain/cut/match_cut/insert/state_change/time_jump
+          chain_from: ep01_s024     # type=chain 时必填，或沿用顶层 chain_from
+          motivated_by: "场首"       # 状态或轴线变化时必填
+        refs:
+          - 03_keyframes/ref/chenmo_ref_v2.png
+        prompt_lock: true           # 表示 prompt 必须逐字包含角色锚点
+        acceptance:
+          - "右手持半盔，贴纸朝后不可见"
+          - "雨衣左胸 037 可见，只有一处"
+```
+
+### 状态与道具契约
+
+`01_series/continuity/contracts.yaml` 存角色锚点、负面词、合法状态值、道具锚点：
+
+```yaml
+version: 1
+characters:
+  chenmo:
+    anchor: "<从 02_characters/chenmo.md 逐字复制>"
+    negative_required: ["changed outfit", "missing scar", "full-face helmet"]
+    forbidden_positive: ["full-face helmet", "visor", "chin bar", "blood"]
+    states:
+      helmet: [worn_open_face, off_right_hand, off_left_hand, on_bike, none]
+      held_left: [none, phone, cup, bag, receipt]
+      held_right: [none, helmet, cup, bag, receipt]
+    required_phrases:
+      - when: {helmet: worn_open_face, shot_type: [ECU, CU, MS]}
+        phrases: ["open-face half helmet", "no visor", "no chin bar"]
+props:
+  cup:
+    anchor: "500ml clear sealed cup with dome lid and straw"
+    forbidden: ["can", "bottle", "logo", "brand"]
+```
 
 ## 与视频技能的对接
 
