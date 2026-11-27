@@ -103,9 +103,12 @@ description: 漫剧/短剧集从创意到成片的文件化流水线：导演组
 
 失败现象、机制与最便宜修法见 `references/failure-modes.md`。
 
+镜头语法、空间九格、表演落地、视频提示词模板（单首帧 / 多参考 / 首尾帧）、三点停验收与 R1–R4 审阅见 `references/shot-and-video-craft.md`。多人物走位、复杂机位、跨轴或狭窄空间的镜头，在 G2 前补一次预演（Blender MCP 优先），产物写 `01_series/director/epNN_previs.md`；预演不参与 G3 签字，也不替代 G2。
+
 ## 第三方技能包引入红线
 
 - MIT / Apache-2.0 / CC0 可引入，保留版权与 NOTICE；MIT-0 可省声明。
+- 已引入：Toonflow v1.1.8 技能库（MIT）的镜头语法与视频提示词方法，按本机模型改写为 `references/shot-and-video-craft.md`，来源 commit eecf515；平台画布与节点操作未迁移。
 - CC BY-NC-ND、All rights reserved、仓库无 LICENSE 一律不进商用产线；只可读思路，不复制文本、数据与资产。
 - 平台绑定执行型 Skill（即梦、WorkRally、AI-HIVE 等）默认不装：会外发素材、写项目、产生计费；安装前须用户逐项授权并核对密钥与上传范围。
 - README 自报的成本、测试数与样片效果不作验收证据；以本机跑通并留产物为准。
@@ -122,6 +125,8 @@ description: 漫剧/短剧集从创意到成片的文件化流水线：导演组
 
 - [ ] 每集时长 60–90 秒，`sum(duration)` 与 `duration_target` 精确闭合，镜头数与分镜表一致
 - [ ] 每镜只有一个 `beat`；台词估算时长（4.5 字/秒）不超镜头时长
+- [ ] 每场有九格空间基准与轴线侧；相邻镜的位置、视线、持物手、动作进度可衔接
+- [ ] 视频提示词按 `shot-and-video-craft.md` 的契约写：原台词、说话者口型、OS/VO 不张口、具体声源、起终状态齐全
 - [ ] 同场景连续镜头已按 `chain_from` 做尾帧接力，相邻镜无光影/站位跳变
 - [ ] ep02 起 `check_continuity.py` 0 error；warning 逐条有处置记录
 - [ ] 状态变化（摘盔/换手/换装/添伤）均有 `state_change` 或 `time_jump` 镜，且写 `motivated_by`
